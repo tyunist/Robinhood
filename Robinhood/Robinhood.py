@@ -305,10 +305,30 @@ class Robinhood:
             return res
 
         return res['results']
+    
+    def instrument_from_URL(self, instrument_URL):
+        """Fetch instrument info directly using instrument_URL which can be retrieved from tag 'instrument' in position
+
+            Args:
+                instrument_URL(str): instrument URL 
+
+            Returns:
+                (:obj:`dict`): JSON dict of instrument
+        """
+        #url = str(endpoints.instruments()) + "?symbol=" + str(id)
+        url = instrument_URL
+        try:
+            req = requests.get(url, timeout=15)
+            req.raise_for_status()
+            data = req.json()
+        except requests.exceptions.HTTPError:
+            raise RH_exception.InvalidInstrumentId()
+        
+        return data
 
 
     def instrument(self, id):
-        """Fetch instrument info
+        """Fetch instrument info using the instrument id. This requires that the instrument_URL has the form '.../...?symbol=' + str(instrument_ID)
 
             Args:
                 id (str): instrument id
@@ -1352,7 +1372,8 @@ class Robinhood:
             raise(ValueError('Quantity must be positive number in call to submit_sell_order'))
 
         payload = {}
-
+        import pdb 
+        pdb.set_trace()
         for field, value in [
                 ('account', self.get_account()['url']),
                 ('instrument', instrument_URL),
@@ -1708,3 +1729,19 @@ class Robinhood:
         # Order type cannot be cancelled without a valid cancel link
         else:
             raise ValueError('Unable to cancel order ID: ' + order_id)
+
+	
+    def get_open_orders(self):
+        """Returns all currently open (cancellable) orders.
+        If not orders are currently open, `None` is returned.
+        TODO: Is there a way to get these from the API endpoint without stepping through
+            order history?
+        """
+
+        open_orders = []
+        orders = self.order_history()
+        for order in orders["results"]:
+            if order["cancel"] is not None:
+                open_orders.append(order)
+
+        return open_orders
